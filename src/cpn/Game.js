@@ -1,17 +1,7 @@
 import React, { Component } from 'react'
 import Board from './Board';
-
-class Postion {
-    constructor(x, y) {
-        this.x = x
-        this.y = y
-    }
-
-    isInSize(size) {
-        return this.x >= 0 && this.y >= 0
-            && this.x < size && this.y < 20
-    }
-}
+import Notification from './Notification';
+import {Winner, Postion} from './Model';
 
 export class Game extends Component {
     constructor(props) {
@@ -20,54 +10,31 @@ export class Game extends Component {
         this.state = {
             current: false,
             board: this.initBoard(this.size),
-            currentPostion: new Postion(-1,-1)
+            currentPostion: new Postion(-1, -1)
         }
+        this.notification = React.createRef()
         this.onCellClick = this.onCellClick.bind(this)
+        this.onRetry = this.onRetry.bind(this)
     }
 
     onCellClick(col, row) {
-        const { board: data, current } = this.state;
-        if (data[row][col] !== "") return
+        const { board: data, current, winner } = this.state;
+        if (data[row][col] !== "" || winner !== undefined) return
         data[row][col] = current ? "x" : "o"
         let position = new Postion(col, row)
+        this.notification.current.pushHistory(data[row][col],col, row)
         this.setState({
             board: data,
             current: !current,
             currentPostion: position
         }, () => {
-            if (this.checkWin()) {
-                console.log(`win`)
+            let winner = this.checkWin()
+            if (winner !== undefined) {
+                this.setState({
+                    winner: winner
+                })
             }
         })
-    }
-
-    checkRow(arr) {
-        var currentState = ""
-        var count = 0
-        var startState = -1
-        var endIndex = -1
-        for (var i = 0; i < arr.length; i++) {
-            let state = arr[i]
-            if (state === "") continue
-            if (currentState != state) {
-                currentState = state
-                count = 1
-                startState = i - 1
-            } else {
-                count++
-            }
-            if (count === 5) {
-                endIndex = i + 1
-                if ((startState > 0 || endIndex < arr.length) &&
-                    (arr[startState] === arr[endIndex]
-                        && arr[startState] !== currentState)
-                ) {
-                    continue
-                }
-                return true
-            }
-        }
-        return false
     }
 
     check2Head(data, current, startState, endState) {
@@ -106,23 +73,22 @@ export class Game extends Component {
                 if (count === 5) {
                     endState = nextStep(nextIndex)
                     if (!this.check2Head(data, currentState, startState, endState)) {
-                        return true
+                        return new Winner(currentState)
                     }
                 }
             }
 
             nextIndex = nextStep(nextIndex)
-            console.log(nextIndex)
             if ((nextIndex.x === endIndex.x && nextIndex.y > endIndex.y)
                 || nextIndex.x > endIndex.x) {
                 break
             }
         }
-        return false
+        return undefined
     }
 
     checkWin() {
-        const {board: data, currentPostion} = this.state
+        const { board: data, currentPostion } = this.state
         let col = currentPostion.x
         let row = currentPostion.y
         let realSize = this.size - 1
@@ -138,16 +104,16 @@ export class Game extends Component {
         }, (index) => {
             return new Postion(index.x - 1, row)
         })
+        if (checkRow != undefined) return checkRow
 
         //Column
         console.log("Column")
-        let checkCol = this.checkBoard(data, () => {
-            return new Postion(col, 0)
-        }, () => {
-            return new Postion(col, realSize)
-        }, (index) => {
-            return new Postion(col, index.y + 1)
-        }, (index) => new Postion(col, index.y - 1))
+        let checkCol = this.checkBoard(data, 
+            () => new Postion(col, 0), 
+            () => new Postion(col, realSize),
+            (index) => new Postion(col, index.y + 1),
+            (index) => new Postion(col, index.y - 1))
+        if (checkCol != undefined) return checkCol
 
         //LeftRightDown
         console.log("LeftRightDown")
@@ -163,31 +129,39 @@ export class Game extends Component {
             } else {
                 return new Postion(col + realSize - row, realSize)
             }
-        }, (index) => {
-            return new Postion(index.x + 1, index.y + 1)
-        }, (index) => new Postion(index.x - 1, index.y - 1))
+        }, 
+        (index) => new Postion(index.x + 1, index.y + 1), 
+        (index) => new Postion(index.x - 1, index.y - 1))
+        if (checkDown != undefined) return checkDown
 
         //LeftRightUp
         console.log("LeftRightUp")
 
         let checkUp = this.checkBoard(data, () => {
             if (row > realSize - col) {
-                return new Postion(realSize -1 , col + row - realSize)
+                return new Postion(realSize - 1, col + row - realSize)
             } else {
                 return new Postion(0, col + row)
             }
         }, () => {
-            if (row > realSize- col) {
-                return new Postion(col + row - realSize, realSize- 1)
+            if (row > realSize - col) {
+                return new Postion(col + row - realSize, realSize - 1)
             } else {
                 return new Postion(col + row, 0)
             }
-        }, (index) => {
-            return new Postion(index.x + 1, index.y - 1)
-        }, (index) => {
-            return new Postion(index.x - 1, index.y + 1)
+        }, 
+        (index) => new Postion(index.x + 1, index.y - 1), 
+        (index) => new Postion(index.x - 1, index.y + 1))
+        if (checkUp != undefined) return checkUp
+        return undefined
+    }
+
+    onRetry() {
+        this.setState({
+            current: false,
+            board: this.initBoard(this.size),
+            currentPostion: new Postion(-1, -1)
         })
-        return checkRow || checkCol || checkDown || checkUp
     }
 
     initBoard(size) {
@@ -195,13 +169,28 @@ export class Game extends Component {
     }
 
     render() {
-        const { board } = this.state;
+        const { board, current, winner } = this.state;
         return (
-            <div>
-                <Board
-                    size={this.size}
-                    data={board}
-                    onCellClick={this.onCellClick} />
+            <div className="game">
+                <div>
+                    <Board
+                        size={this.size}
+                        data={board}
+                        onCellClick={this.onCellClick}
+                    />
+                    <button className="retry"
+                        onClick={this.onRetry}
+                    >
+                        Retry
+                    </button>
+                </div>
+                <div className="game-info">
+                    <Notification
+                        ref={this.notification}
+                        nextMove={current ? "x" : "o"}
+                        winner={winner}
+                    />
+                </div>
             </div>
         )
     }

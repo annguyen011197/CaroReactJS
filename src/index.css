@@ -28,3 +28,23 @@ body {
   content: "";
   display: table;
 }
+
+.game {
+  display: flex;
+  flex-direction: row;
+  margin: 30px;
+}
+
+.game-info {
+  margin-left: 20px;
+}
+
+.retry {
+  align-self: flex-start;
+  display: block;
+  margin-top: 10px;
+}
+
+ol, ul {
+  padding-left: 30px;
+}

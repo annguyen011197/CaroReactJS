@@ -7,6 +7,7 @@ export class Board extends Component {
         let board = []
         for (var i = 0; i < size; i++) {
             board.push(<Row
+                key={i}
                 size={size}
                 index={i}
                 row={data[i]}
@@ -33,6 +34,7 @@ const Row = (props) => {
     for (var i = 0; i < size; i++) {
         row.push(
             <Square
+                key={`${i}_${index}`}
                 x={i}
                 y={index}
                 value={data[i]}
