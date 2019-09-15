@@ -6,7 +6,7 @@ import {Winner, Postion} from './Model';
 export class Game extends Component {
     constructor(props) {
         super(props)
-        this.size = 20
+        this.size = 20  
         this.state = {
             current: false,
             board: this.initBoard(this.size),
